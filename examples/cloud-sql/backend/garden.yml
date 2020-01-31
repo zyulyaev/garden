@@ -1,0 +1,25 @@
+kind: Module
+name: backend
+description: Backend service container
+type: container
+services:
+  - name: backend
+    ports:
+      - name: http
+        containerPort: 8080
+    healthCheck:
+      httpGet:
+        path: /
+        port: http
+    ingresses:
+      - path: /
+        port: http
+      - path: /hello
+        port: http
+    dependencies: [db, db-dev]
+    # FIXME: This is not very elegant and won't work for more environments
+    env:
+      DB_HOST: "${environment.name == 'remote' ? runtime.services.db.outputs.db_host_ip : 'postgres'}"
+      DB_PORT: "${environment.name == 'remote' ? '' : '5432'}"
+      DB_USER: "${environment.name == 'remote' ? runtime.services.db.outputs.db_username : 'postgres'}"
+      DB_PASSWORD: "${environment.name == 'remote' ? runtime.services.db.outputs.db_password : 'postgres'}"

@@ -20,7 +20,11 @@ services:
       - backend
 tests:
   - name: unit
-    args: [npm, test]
+    command: ["/bin/sh", "-c", "echo hello > test.txt"]
+    artifacts:
+      - source: /app/test.txt
+        target: my-target/
+   # args: [npm, test]
   - name: integ
     args: [npm, run, integ]
     dependencies:

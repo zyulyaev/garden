@@ -1,11 +1,14 @@
 variable "gcp_project_id" {
   type        = "string"
   description = "The project ID where we'll create the GKE cluster and related resources."
+  # TODO: Remove default
+  default     = "garden-gke-tf-eysi-265108"
 }
 
 variable "gcp_region" {
   type        = "string"
   description = "The region where we'll create your resources (e.g. us-central1)."
+  # TODO: Remove default
   default     = "europe-west1"
 }
 
@@ -17,10 +20,10 @@ variable "gcp_zone" {
 data "google_client_config" "current" {}
 
 variable "gcp_network_name" {
-  default = "tf-gke"
+  default = "tf-gke-3"
 }
 
-provider "google-beta" {
+provider "google" {
   project = "${var.gcp_project_id}"
   region  = "${var.gcp_region}"
   zone    = "${var.gcp_zone}"
@@ -45,7 +48,7 @@ data "google_container_engine_versions" "default" {
 
 # See all available options at https://www.terraform.io/docs/providers/google/r/container_cluster.html
 resource "google_container_cluster" "primary" {
-  name               = "my-gke-cluster"
+  name               = "gke"
   location           = "${var.gcp_zone}"
   initial_node_count = 3
   min_master_version = "${data.google_container_engine_versions.default.latest_master_version}"
@@ -160,5 +163,7 @@ output "gke_cluster_ca_certificate" {
 }
 
 output "kubeconfig_path" {
-  value = "${local_file.kubeconfig.filename}"
+  # value = "${local_file.kubeconfig.filename}"
+  # Hardcoding the value for now since I moved it from the root
+  value = "./cluster/kubeconfig.yaml"
 }
