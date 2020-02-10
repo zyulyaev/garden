@@ -129,6 +129,7 @@ interface KubectlSpawnParams extends KubectlParams {
 class Kubectl extends BinaryCmd {
   async exec(params: KubectlParams) {
     this.prepareArgs(params)
+    console.log("kubectl " + params.args.join(" "))
     return super.exec(params)
   }
 

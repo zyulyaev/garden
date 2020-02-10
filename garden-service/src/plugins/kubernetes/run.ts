@@ -287,7 +287,7 @@ export async function runAndCopy({
       )
     } finally {
       await tmpDir.cleanup()
-      await runner.stop()
+      // await runner.stop()
     }
   } else {
     result = await runner.startAndWait({
@@ -523,6 +523,8 @@ export class PodRunner extends PodRunnerParams {
       stderr,
       timeout,
     })
+
+    console.log(res)
 
     return {
       moduleName: this.module.name,
