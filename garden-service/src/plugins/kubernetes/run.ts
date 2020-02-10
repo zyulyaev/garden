@@ -214,6 +214,7 @@ export async function runAndCopy({
         log,
         stdout,
         stderr,
+        timeout,
       })
 
       // Need to retrieve the logs explicitly, because kubectl exec sometimes fails to capture them
