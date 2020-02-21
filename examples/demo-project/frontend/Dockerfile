@@ -4,6 +4,8 @@ ENV PORT=8080
 EXPOSE ${PORT}
 WORKDIR /app
 
+RUN npm install -g nodemon
+
 COPY package.json /app
 RUN npm install
 

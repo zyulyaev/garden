@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node main.js",
     "test": "echo OK",
+    "dev": "nodemon main.js",
     "integ": "node_modules/mocha/bin/mocha test/integ.js"
   },
   "author": "garden.io <info@garden.io>",
