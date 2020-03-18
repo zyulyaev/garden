@@ -33,15 +33,15 @@ name: backend
 # The build arguments to use when building the image.
 # Corresponds to the ARG directive in the Dockerfile.
 buildArgs:
-  BASE_IMAGE_VERSION: ${modules.base-image.version}
+  BASE_IMAGE: ${modules.base-image.outputs.deployment-image-name}:${modules.base-image.version}
 ```
 
 and
 
 ```Dockerfile
 # In backend/Dockerfile.dev
-ARG BASE_IMAGE_VERSION
-FROM base-image:${BASE_IMAGE_VERSION}
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 ENV APP_ENV=development
 ```
 

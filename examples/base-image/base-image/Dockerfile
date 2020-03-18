@@ -1,10 +1,10 @@
 FROM golang:1.11.9-alpine3.9
 
-WORKDIR /go/src/app
+ENV PORT=8080
+EXPOSE ${PORT}
+WORKDIR /app
 
-ONBUILD COPY *.go ./
-ONBUILD RUN go build .
+ONBUILD COPY main.go .
+ONBUILD RUN go build -o main .
 
-ENTRYPOINT ./app
-
-EXPOSE 8080
+ENTRYPOINT ["./main"]
