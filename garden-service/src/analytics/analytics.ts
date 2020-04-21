@@ -38,7 +38,7 @@ export function getUserId(globalConfig: GlobalConfig) {
   }
 }
 
-export interface SystemInfo {
+interface SystemInfo {
   gardenVersion: string
   platform: string
   platformVersion: string
@@ -54,7 +54,7 @@ interface ProjectMetadata {
   moduleTypes: string[]
 }
 
-export interface AnalyticsEventProperties {
+interface AnalyticsEventProperties {
   projectId: string
   projectName: string
   ciName: string | null
@@ -64,50 +64,49 @@ export interface AnalyticsEventProperties {
   projectMetadata: ProjectMetadata
 }
 
-export interface AnalyticsCommandEventProperties extends AnalyticsEventProperties {
+interface AnalyticsCommandEventProperties extends AnalyticsEventProperties {
   name: string
 }
 
-export interface AnalyticsTaskEventProperties extends AnalyticsEventProperties {
-  batchId: string
-  taskType: string
-  taskName: string
-  taskStatus: string
+interface AnalyticsTaskBatchEventProperties extends AnalyticsEventProperties {
+  startedAt: Date | null
+  completedAt: Date | null
 }
-export interface AnalyticsApiEventProperties extends AnalyticsEventProperties {
+
+interface AnalyticsApiEventProperties extends AnalyticsEventProperties {
   path: string
   command: string
   name: string
 }
 
-export interface AnalyticsConfigErrorProperties extends AnalyticsEventProperties {
+interface AnalyticsConfigErrorProperties extends AnalyticsEventProperties {
   moduleType: string
 }
 
-export interface AnalyticsProjectErrorProperties extends AnalyticsEventProperties {
+interface AnalyticsProjectErrorProperties extends AnalyticsEventProperties {
   fields: Array<string>
 }
 
-export interface AnalyticsValidationErrorProperties extends AnalyticsEventProperties {
+interface AnalyticsValidationErrorProperties extends AnalyticsEventProperties {
   fields: Array<string>
 }
 
-export interface ApiRequestBody {
+interface ApiRequestBody {
   command: string
 }
 
-export interface AnalyticsEvent {
+interface AnalyticsEvent {
   type: AnalyticsType
   properties: AnalyticsEventProperties
 }
 
-export interface SegmentEvent {
+interface SegmentEvent {
   userId: string
   event: AnalyticsType
   properties: AnalyticsEventProperties
 }
 
-type SupportedEvents = Events["taskPending"] | Events["taskProcessing"] | Events["taskComplete"] | Events["taskError"]
+type SupportedEvents = Events["taskGraphProcessing"] | Events["taskGraphComplete"]
 
 /**
  * A Segment client wrapper with utility functionalities global config and info,
@@ -246,7 +245,9 @@ export class AnalyticsHandler {
    */
   private async processEvent<T extends EventName>(name: T, payload: Events[T]) {
     if (AnalyticsHandler.isSupportedEvent(name, payload)) {
-      await this.trackTask(payload.batchId, payload.name, payload.type, name)
+      const startedAt = AnalyticsHandler.isTaskGraphProcessingEvent(name, payload) ? payload.startedAt : null
+      const completedAt = AnalyticsHandler.isTaskGraphCompleteEvent(name, payload) ? payload.completedAt : null
+      await this.trackTaskBatch(startedAt, completedAt)
     }
   }
 
@@ -258,11 +259,34 @@ export class AnalyticsHandler {
   }
 
   /**
-   * Typeguard to check wether we can process or not an event
+   * Typeguard that asserts whether a given event type is one of supported events
+   *
+   * TODO: Assert type of name param once this is released: https://github.com/microsoft/TypeScript/issues/26916
    */
   static isSupportedEvent(name: EventName, _event: Events[EventName]): _event is SupportedEvents {
-    const supportedEventsKeys = ["taskPending", "taskProcessing", "taskComplete", "taskError"]
+    const supportedEventsKeys: EventName[] = ["taskGraphProcessing", "taskGraphComplete"]
     return supportedEventsKeys.includes(name)
+  }
+
+  /**
+   * Typeguard that asserts whether a given event has type "taskGraphProcessing"
+   *
+   * TODO: Assert type of name param once this is released: https://github.com/microsoft/TypeScript/issues/26916
+   */
+  static isTaskGraphProcessingEvent(
+    name: EventName,
+    _event: Events[EventName]
+  ): _event is Events["taskGraphProcessing"] {
+    return name === "taskGraphProcessing"
+  }
+
+  /**
+   * Typeguard that assert whether a given event has type "taskGraphComplete"
+   *
+   * TODO: Assert type of name param once this is released: https://github.com/microsoft/TypeScript/issues/26916
+   */
+  static isTaskGraphCompleteEvent(name: EventName, _event: Events[EventName]): _event is Events["taskGraphComplete"] {
+    return name === "taskGraphComplete"
   }
 
   /**
@@ -282,11 +306,11 @@ export class AnalyticsHandler {
    */
   private async generateProjectMetadata(): Promise<ProjectMetadata> {
     const configGraph = await this.garden.getConfigGraph(this.log)
-    const modules = await configGraph.getModules()
+    const modules = configGraph.getModules()
     const moduleTypes = [...new Set(modules.map((m) => m.type))]
 
-    const tasks = await configGraph.getTasks()
-    const services = await configGraph.getServices()
+    const tasks = configGraph.getTasks()
+    const services = configGraph.getServices()
     const tests = modules.map((m) => m.testConfigs)
     const testsCount = flatten(tests).length
 
@@ -387,25 +411,20 @@ export class AnalyticsHandler {
   /**
    * Tracks a Garden Task. The taskName is hashed since it could contain sensitive information
    *
-   * @param {string} batchId An id representing the current TaskGraph execution batch
-   * @param {string} taskName The name of the Task. Usually in the format '<taskType>.<moduleName>'
-   * @param {string} taskType The type of the Task
-   * @param {string} taskStatus the status of the task: "taskPending", "taskProcessing", "taskComplete" or "taskError"
+   * @param {Date | null} startedAt Start time of task batch processing, emitted by taskGraphProcessing event
+   * @param {Date | null} completedAt End time of task batch processing, emitted by taskGraphComplete event
    * @returns
    * @memberof AnalyticsHandler
    */
-  trackTask(batchId: string, taskName: string, taskType: string, taskStatus: string) {
-    const hashedTaskName = hasha(taskName, { algorithm: "sha256" })
-    const properties: AnalyticsTaskEventProperties = {
-      batchId,
-      taskName: hashedTaskName,
-      taskType,
+  trackTaskBatch(startedAt: Date | null, completedAt: Date | null) {
+    const properties: AnalyticsTaskBatchEventProperties = {
+      startedAt,
+      completedAt,
       ...this.getBasicAnalyticsProperties(),
-      taskStatus,
     }
 
     return this.track({
-      type: AnalyticsType.TASK,
+      type: AnalyticsType.TASK_BATCH,
       properties,
     })
   }

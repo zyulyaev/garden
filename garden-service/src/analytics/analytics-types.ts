@@ -8,7 +8,7 @@
 
 export enum AnalyticsType {
   COMMAND = "Run Command",
-  TASK = "Run Task",
+  TASK_BATCH = "Process Task Batch",
   CALL_API = "Call API",
   MODULE_CONFIG_ERROR = "Module Configuration Error",
   PROJECT_CONFIG_ERROR = "Project Configuration Error",
