@@ -12,9 +12,11 @@ import _spawn from "cross-spawn"
 import { pathExists, readFile, writeFile, lstat } from "fs-extra"
 import minimatch = require("minimatch")
 import { some } from "lodash"
-import { join, basename, win32, posix } from "path"
-import { FilesystemError } from "../exceptions"
+import { join, basename, win32, posix, isAbsolute, relative } from "path"
+import normalize = require("normalize-path")
 import { platform } from "os"
+
+import { FilesystemError } from "../exceptions"
 import { VcsHandler } from "../vcs/vcs"
 import { LogEntry } from "../logger/log-entry"
 import { ModuleConfig } from "../config/module"
@@ -154,6 +156,13 @@ export function toCygwinPath(path: string) {
 
 export function normalizeLocalRsyncPath(path: string) {
   return platform() === "win32" ? toCygwinPath(path) : path
+}
+
+/**
+ * Normalize given path to POSIX-style path relative to `root`
+ */
+export function normalizeRelativePath(path: string, root: string) {
+  return normalize(isAbsolute(path) ? relative(root, path) : path)
 }
 
 /**

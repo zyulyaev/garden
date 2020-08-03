@@ -24,7 +24,7 @@ import { getAppNamespace } from "./namespace"
 import { KubernetesPluginContext } from "./config"
 import { HotReloadServiceParams, HotReloadServiceResult } from "../../types/plugin/service/hotReloadService"
 import { KubernetesResource, KubernetesWorkload, KubernetesList } from "./types"
-import { normalizeLocalRsyncPath } from "../../util/fs"
+import { normalizeLocalRsyncPath, normalizeRelativePath } from "../../util/fs"
 import { createWorkloadManifest } from "./container/deployment"
 import { kubectl } from "./kubectl"
 import { labelSelectorToString } from "./util"
@@ -377,9 +377,11 @@ export async function syncToService({ ctx, service, hotReloadSpec, namespace, wo
  * `subdir/myfile` in the output, and if `source` = `.` or `*`, it would be transformed to `mydir/subdir/myfile`.
  */
 export function filesForSync(module: Module, source: string): string[] {
-  const normalizedSource = resolve(module.path, source.replace("**/", "").replace("*", ""))
-  const moduleFiles = module.version.files
+  const normalizedSource = normalizeLocalRsyncPath(resolve(module.path, source.replace("**/", "").replace("*", "")))
+
+  // Normalize to relative POSIX-style paths
+  const moduleFiles = module.version.files.map((f) => normalizeRelativePath(f, module.path))
+
   const files = normalizedSource === "" ? moduleFiles : moduleFiles.filter((path) => path.startsWith(normalizedSource))
-  const normalizedFiles = files.map((f) => relative(normalizedSource, f))
-  return normalizedFiles
+  return files.map((f) => relative(normalizedSource, f))
 }
