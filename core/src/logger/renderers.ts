@@ -17,7 +17,7 @@ import hasAnsi = require("has-ansi")
 import { LogEntry, LogEntryMessage } from "./log-entry"
 import { JsonLogEntry } from "./writers/json-terminal-writer"
 import { highlightYaml, PickFromUnion, safeDumpYaml } from "../util/util"
-import { printEmoji, formatGardenError } from "./util"
+import { printEmoji, formatGardenErrorWithDetail } from "./util"
 import { LoggerType, Logger } from "./logger"
 
 type RenderFn = (entry: LogEntry) => string
@@ -90,7 +90,7 @@ export function renderEmoji(entry: LogEntry): string {
 export function renderError(entry: LogEntry) {
   const { errorData: error } = entry
   if (error) {
-    return formatGardenError(error)
+    return formatGardenErrorWithDetail(error)
   }
 
   const msg = chainMessages(entry.getMessages() || [])

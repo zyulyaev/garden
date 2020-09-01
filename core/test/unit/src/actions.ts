@@ -1044,7 +1044,7 @@ describe("ActionRouter", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base"],
+          dependencies: [{ name: "base" }],
           extendModuleTypes: [
             {
               name: "bar",
@@ -1097,7 +1097,7 @@ describe("ActionRouter", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base"],
+          dependencies: [{ name: "base" }],
           extendModuleTypes: [
             {
               name: "bar",
@@ -1109,7 +1109,7 @@ describe("ActionRouter", () => {
         })
         const too = createGardenPlugin({
           name: "too",
-          dependencies: ["base", "foo"],
+          dependencies: [{ name: "base" }, { name: "foo" }],
           extendModuleTypes: [
             {
               name: "bar",
@@ -1166,7 +1166,7 @@ describe("ActionRouter", () => {
           })
           const foo = createGardenPlugin({
             name: "foo",
-            dependencies: ["base"],
+            dependencies: [{ name: "base" }],
             extendModuleTypes: [
               {
                 name: "bar",
@@ -1178,7 +1178,7 @@ describe("ActionRouter", () => {
           })
           const too = createGardenPlugin({
             name: "too",
-            dependencies: ["base"],
+            dependencies: [{ name: "base" }],
             extendModuleTypes: [
               {
                 name: "bar",
@@ -1235,7 +1235,7 @@ describe("ActionRouter", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base"],
+          dependencies: [{ name: "base" }],
           extendModuleTypes: [
             {
               name: "bar",
@@ -1300,7 +1300,7 @@ describe("ActionRouter", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base"],
+          dependencies: [{ name: "base" }],
           createModuleTypes: [
             {
               name: "moo",
@@ -1344,7 +1344,7 @@ describe("ActionRouter", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base"],
+          dependencies: [{ name: "base" }],
           createModuleTypes: [
             {
               name: "moo",
@@ -1387,7 +1387,7 @@ describe("ActionRouter", () => {
         })
         const baseB = createGardenPlugin({
           name: "base-b",
-          dependencies: ["base-a"],
+          dependencies: [{ name: "base-a" }],
           createModuleTypes: [
             {
               name: "base-b",
@@ -1400,7 +1400,7 @@ describe("ActionRouter", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base-b"],
+          dependencies: [{ name: "base-b" }],
           createModuleTypes: [
             {
               name: "moo",
@@ -2086,7 +2086,7 @@ const moduleActionDescriptions = getModuleActionDescriptions()
 
 const testPlugin = createGardenPlugin({
   name: "test-plugin",
-  dependencies: ["base"],
+  dependencies: [{ name: "base" }],
 
   handlers: <PluginActionHandlers>{
     configureProvider: async (params) => {

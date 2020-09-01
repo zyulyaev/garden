@@ -16,7 +16,6 @@ import { Garden } from "../../../../../src/garden"
 import { ConfigGraph } from "../../../../../src/config-graph"
 import { deline, randomString, dedent } from "../../../../../src/util/string"
 import { runAndCopy, PodRunner, prepareRunPodSpec } from "../../../../../src/plugins/kubernetes/run"
-import { containerHelpers } from "../../../../../src/plugins/container/helpers"
 import { KubeApi } from "../../../../../src/plugins/kubernetes/api"
 import {
   KubernetesPluginContext,
@@ -944,7 +943,7 @@ describe("kubernetes Pod runner functions", () => {
 
     it("should run a basic module", async () => {
       const module = graph.getModule("simple")
-      const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+      const image = module.outputs["deployment-image-id"]
 
       const result = await runAndCopy({
         ctx: await garden.getPluginContext(provider),
@@ -964,7 +963,7 @@ describe("kubernetes Pod runner functions", () => {
 
     it("should clean up the created container", async () => {
       const module = graph.getModule("simple")
-      const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+      const image = module.outputs["deployment-image-id"]
       const podName = makePodName("test", module.name)
 
       await runAndCopy({
@@ -990,7 +989,7 @@ describe("kubernetes Pod runner functions", () => {
     it("should return with success=false when command exceeds timeout", async () => {
       const task = graph.getTask("artifacts-task")
       const module = task.module
-      const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+      const image = module.outputs["deployment-image-id"]
 
       const result = await runAndCopy({
         ctx: await garden.getPluginContext(provider),
@@ -1015,7 +1014,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should copy artifacts out of the container", async () => {
         const task = graph.getTask("artifacts-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         const result = await runAndCopy({
           ctx: await garden.getPluginContext(provider),
@@ -1040,7 +1039,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should clean up the created Pod", async () => {
         const task = graph.getTask("artifacts-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
         const podName = makePodName("test", module.name)
 
         await runAndCopy({
@@ -1068,7 +1067,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should handle globs when copying artifacts out of the container", async () => {
         const task = graph.getTask("globs-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         await runAndCopy({
           ctx: await garden.getPluginContext(provider),
@@ -1092,7 +1091,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should not throw when an artifact is missing", async () => {
         const task = graph.getTask("artifacts-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         await runAndCopy({
           ctx: await garden.getPluginContext(provider),
@@ -1113,7 +1112,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should correctly copy a whole directory", async () => {
         const task = graph.getTask("dir-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         await runAndCopy({
           ctx: await garden.getPluginContext(provider),
@@ -1137,7 +1136,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should return with logs and success=false when command exceeds timeout", async () => {
         const task = graph.getTask("artifacts-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         const result = await runAndCopy({
           ctx: await garden.getPluginContext(provider),
@@ -1162,7 +1161,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should copy artifacts out of the container even when task times out", async () => {
         const task = graph.getTask("artifacts-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         const result = await runAndCopy({
           ctx: await garden.getPluginContext(provider),
@@ -1188,7 +1187,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should throw when container doesn't contain sh", async () => {
         const task = graph.getTask("missing-sh-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         const actions = await garden.getActionRouter()
         await garden.buildStaging.syncFromSrc(module, garden.log)
@@ -1229,7 +1228,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should throw when container doesn't contain tar", async () => {
         const task = graph.getTask("missing-tar-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         const actions = await garden.getActionRouter()
         await garden.buildStaging.syncFromSrc(module, garden.log)
@@ -1270,7 +1269,7 @@ describe("kubernetes Pod runner functions", () => {
       it("should throw when no command is specified", async () => {
         const task = graph.getTask("missing-tar-task")
         const module = task.module
-        const image = containerHelpers.getDeploymentImageId(module, module.version, provider.config.deploymentRegistry)
+        const image = module.outputs["deployment-image-id"]
 
         await expectError(
           async () =>

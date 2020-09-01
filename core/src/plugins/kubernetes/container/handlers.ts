@@ -13,7 +13,6 @@ import { runContainerModule, runContainerService, runContainerTask } from "./run
 import { execInService } from "./exec"
 import { testContainerModule } from "./test"
 import { ConfigurationError } from "../../../exceptions"
-import { configureContainerModule } from "../../container/container"
 import { KubernetesProvider } from "../config"
 import { ConfigureModuleParams } from "../../../types/plugin/module/configure"
 import { getContainerServiceStatus } from "./status"
@@ -27,7 +26,7 @@ import { GetModuleOutputsParams } from "../../../types/plugin/module/getModuleOu
 import { containerHelpers } from "../../container/helpers"
 
 async function configure(params: ConfigureModuleParams<ContainerModule>) {
-  let { moduleConfig } = await configureContainerModule(params)
+  let { moduleConfig } = await params.base!(params)
   params.moduleConfig = moduleConfig
   return validateConfig(params)
 }

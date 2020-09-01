@@ -109,7 +109,7 @@ describe("hadolint provider", () => {
   it("should add a hadolint module for module types inheriting from container", async () => {
     const foo = createGardenPlugin({
       name: "foo",
-      dependencies: ["container"],
+      dependencies: [{ name: "container" }],
       createModuleTypes: [
         {
           name: "foo",

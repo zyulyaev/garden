@@ -55,7 +55,7 @@ describe("conftest-container provider", () => {
   it("should add a conftest module for module types inheriting from container", async () => {
     const foo = createGardenPlugin({
       name: "foo",
-      dependencies: ["container"],
+      dependencies: [{ name: "container" }],
       createModuleTypes: [
         {
           name: "foo",

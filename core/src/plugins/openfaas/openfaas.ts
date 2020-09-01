@@ -59,7 +59,7 @@ export const gardenPlugin = () =>
   createGardenPlugin({
     name: "openfaas",
     configSchema: configSchema(),
-    dependencies: ["kubernetes"],
+    dependencies: [{ name: "kubernetes" }],
     docs: dedent`
     This provider adds support for [OpenFaaS](https://www.openfaas.com/). It adds the [\`openfaas\` module type](${moduleTypeUrl}) and (by default) installs the \`faas-netes\` runtime to the project namespace. Each \`openfaas\` module maps to a single OpenFaaS function.
 

@@ -93,7 +93,7 @@ async function createProxy(
       try {
         fwd = await actions.getPortForward({ service, log, ...spec })
       } catch (err) {
-        log.error(`Error starting port forward to ${key}: ${err.message}`)
+        log.warn(chalk.gray(`→ Could not start port forward to ${key} (will retry): ${err.message.trim()}`))
       }
 
       log.debug(`Successfully started port forward to ${key}`)

@@ -6,39 +6,43 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+import AsyncLock from "async-lock"
 import pRetry from "p-retry"
 import { ContainerModule, ContainerRegistryConfig } from "../../../container/config"
-import { containerHelpers } from "../../../container/helpers"
 import { GetBuildStatusParams, BuildStatus } from "../../../../types/plugin/module/getBuildStatus"
 import { BuildModuleParams, BuildResult } from "../../../../types/plugin/module/build"
-import { getRunningDeploymentPod } from "../../util"
+import { getRunningDeploymentPod, usingInClusterRegistry } from "../../util"
 import {
   buildSyncVolumeName,
   dockerAuthSecretKey,
   gardenUtilDaemonDeploymentName,
-  inClusterRegistryHostname,
   k8sUtilImageName,
   rsyncPortName,
 } from "../../constants"
 import { KubeApi } from "../../api"
-import { KubernetesProvider } from "../../config"
+import { KubernetesPluginContext, KubernetesProvider } from "../../config"
 import { PodRunner } from "../../run"
 import { PluginContext } from "../../../../plugin-context"
 import { resolve } from "path"
 import { getPortForward } from "../../port-forward"
 import { normalizeLocalRsyncPath } from "../../../../util/fs"
-import { exec, hashString } from "../../../../util/util"
+import { exec, hashString, sleep } from "../../../../util/util"
 import { InternalError, RuntimeError } from "../../../../exceptions"
 import { LogEntry } from "../../../../logger/log-entry"
 import { getInClusterRegistryHostname } from "../../init"
 import { prepareDockerAuth } from "../../init"
 import chalk from "chalk"
-import { V1Container } from "@kubernetes/client-node"
+import { V1Container, V1Service } from "@kubernetes/client-node"
+import { cloneDeep, isEmpty } from "lodash"
+import { compareDeployedResources, waitForResources } from "../../status/status"
+import { KubernetesDeployment, KubernetesResource } from "../../types"
 
 const inClusterRegistryPort = 5000
 
 export const sharedBuildSyncDeploymentName = "garden-build-sync"
 export const utilRsyncPort = 8730
+export const utilDeploymentName = "garden-util"
+export const utilContainerName = "util"
 
 export const commonSyncArgs = [
   "--recursive",
@@ -61,15 +65,19 @@ export const builderToleration = {
 export type BuildStatusHandler = (params: GetBuildStatusParams<ContainerModule>) => Promise<BuildStatus>
 export type BuildHandler = (params: BuildModuleParams<ContainerModule>) => Promise<BuildResult>
 
+const deployLock = new AsyncLock()
+
 interface SyncToSharedBuildSyncParams extends BuildModuleParams<ContainerModule> {
   api: KubeApi
   namespace: string
   deploymentName: string
   rsyncPort: number
+  sourcePath?: string
 }
 
 export async function syncToBuildSync(params: SyncToSharedBuildSyncParams) {
   const { ctx, module, log, api, namespace, deploymentName, rsyncPort } = params
+
 
   const buildSyncPod = await getRunningDeploymentPod({
     api,
@@ -78,7 +86,7 @@ export async function syncToBuildSync(params: SyncToSharedBuildSyncParams) {
   })
   // Sync the build context to the remote sync service
   // -> Get a tunnel to the service
-  log.setState("Syncing sources to cluster...")
+  log.setState("Syncing files to cluster...")
   const syncFwd = await getPortForward({
     ctx,
     log,
@@ -88,7 +96,8 @@ export async function syncToBuildSync(params: SyncToSharedBuildSyncParams) {
   })
 
   // -> Run rsync
-  const buildRoot = resolve(module.buildPath, "..")
+  const sourcePath = params.sourcePath || module.buildPath
+  const buildRoot = resolve(sourcePath, "..")
   // The '/./' trick is used to automatically create the correct target directory with rsync:
   // https://stackoverflow.com/questions/1636889/rsync-how-can-i-configure-it-to-create-target-directory-on-server
   let src = normalizeLocalRsyncPath(`${buildRoot}`) + `/./${module.name}/`
@@ -103,9 +112,16 @@ export async function syncToBuildSync(params: SyncToSharedBuildSyncParams) {
   })
 
   // Because we're syncing to a shared volume, we need to scope by a unique ID
-  const contextPath = `/garden-build/${ctx.workingCopyId}/${module.name}/`
+  const contextRelPath = `${ctx.workingCopyId}/${module.name}`
 
-  return { contextPath }
+  // Absolute path mounted on the builder
+  const contextPath = `/garden-build/${contextRelPath}`
+  // Absolute path from within the sync/util container
+  const dataPath = `/data/${contextRelPath}`
+
+  log.setState("File sync to cluster complete")
+
+  return { contextRelPath, contextPath, dataPath }
 }
 
 /**
@@ -136,10 +152,10 @@ export async function skopeoBuildStatus({
     // This is validated in the provider configure handler, so this is an internal error if it happens
     throw new InternalError(`Expected configured deploymentRegistry for remote build`, { config: provider.config })
   }
-  const remoteId = containerHelpers.getDeploymentImageId(module, module.version, deploymentRegistry)
-  const inClusterRegistry = deploymentRegistry?.hostname === inClusterRegistryHostname
+  const remoteId = module.outputs["deployment-image-id"]
   const skopeoCommand = ["skopeo", "--command-timeout=30s", "inspect", "--raw", "--authfile", "/.docker/config.json"]
-  if (inClusterRegistry) {
+
+  if (usingInClusterRegistry(provider)) {
     // The in-cluster registry is not exposed, so we don't configure TLS on it.
     skopeoCommand.push("--tls-verify=false")
   }
@@ -187,6 +203,9 @@ export async function skopeoBuildStatus({
   }
 }
 
+/**
+ * Get a PodRunner for the util deployment in the garden-system namespace.
+ */
 export async function getUtilDaemonPodRunner({
   api,
   systemNamespace,
@@ -213,6 +232,75 @@ export async function getUtilDaemonPodRunner({
   })
 }
 
+/**
+ * Ensures that a garden-util deployment exists in the specified namespace.
+ * Returns the docker auth secret that's generated and mounted in the deployment.
+ */
+export async function ensureUtilDeployment({
+  ctx,
+  provider,
+  log,
+  api,
+  namespace,
+}: {
+  ctx: PluginContext
+  provider: KubernetesProvider
+  log: LogEntry
+  api: KubeApi
+  namespace: string
+}) {
+  return deployLock.acquire(namespace, async () => {
+    const deployLog = log.placeholder()
+
+    const { authSecret, updated: secretUpdated } = await ensureBuilderSecret({
+      provider,
+      log,
+      api,
+      namespace,
+    })
+
+    // Check status of the util deployment
+    const { deployment, service } = getUtilManifests(provider, authSecret.metadata.name)
+    const status = await compareDeployedResources(
+      ctx as KubernetesPluginContext,
+      api,
+      namespace,
+      [deployment, service],
+      deployLog
+    )
+
+    if (status.state === "ready") {
+      // Need to wait a little to ensure the secret is updated in the deployment
+      if (secretUpdated) {
+        await sleep(1000)
+      }
+      return { authSecret, updated: false }
+    }
+
+    // Deploy the service
+    deployLog.setState(
+      chalk.gray(`-> Deploying ${utilDeploymentName} service in ${namespace} namespace (was ${status.state})`)
+    )
+
+    await api.upsert({ kind: "Deployment", namespace, log: deployLog, obj: deployment })
+    await api.upsert({ kind: "Service", namespace, log: deployLog, obj: service })
+
+    await waitForResources({
+      namespace,
+      ctx,
+      provider,
+      serviceName: "garden-util",
+      resources: [deployment, service],
+      log: deployLog,
+      timeoutSec: 600,
+    })
+
+    deployLog.setState({ append: true, msg: "Done!" })
+
+    return { authSecret, updated: true }
+  })
+}
+
 export function getSocatContainer(provider: KubernetesProvider) {
   const registryHostname = getInClusterRegistryHostname(provider.config)
 
@@ -234,7 +322,7 @@ export function getSocatContainer(provider: KubernetesProvider) {
 }
 
 export async function getManifestInspectArgs(module: ContainerModule, deploymentRegistry: ContainerRegistryConfig) {
-  const remoteId = containerHelpers.getDeploymentImageId(module, module.version, deploymentRegistry)
+  const remoteId = module.outputs["deployment-image-id"]
 
   const dockerArgs = ["manifest", "inspect", remoteId]
   if (isLocalHostname(deploymentRegistry.hostname)) {
@@ -288,7 +376,7 @@ function isLocalHostname(hostname: string) {
 
 export function getUtilContainer(authSecretName: string): V1Container {
   return {
-    name: "util",
+    name: utilContainerName,
     image: k8sUtilImageName,
     imagePullPolicy: "IfNotPresent",
     command: ["/rsync-server.sh"],
@@ -339,4 +427,90 @@ export function getUtilContainer(authSecretName: string): V1Container {
       runAsGroup: 1000,
     },
   }
+}
+
+export function getUtilManifests(provider: KubernetesProvider, authSecretName: string) {
+  const deployment: KubernetesDeployment = {
+    apiVersion: "apps/v1",
+    kind: "Deployment",
+    metadata: {
+      labels: {
+        app: utilDeploymentName,
+      },
+      name: utilDeploymentName,
+    },
+    spec: {
+      replicas: 1,
+      selector: {
+        matchLabels: {
+          app: utilDeploymentName,
+        },
+      },
+      template: {
+        metadata: {
+          labels: {
+            app: utilDeploymentName,
+          },
+        },
+        spec: {
+          containers: [getUtilContainer(authSecretName)],
+          volumes: [
+            {
+              name: authSecretName,
+              secret: {
+                secretName: authSecretName,
+                items: [
+                  {
+                    key: dockerAuthSecretKey,
+                    path: "config.json",
+                  },
+                ],
+              },
+            },
+            {
+              name: buildSyncVolumeName,
+              emptyDir: {},
+            },
+          ],
+          tolerations: [builderToleration],
+        },
+      },
+    },
+  }
+
+  const service = cloneDeep(baseUtilService)
+
+  if (usingInClusterRegistry(provider)) {
+    // We need a proxy sidecar to be able to reach the in-cluster registry from the Pod
+    deployment.spec!.template.spec!.containers.push(getSocatContainer(provider))
+  }
+
+  // Set the configured nodeSelector, if any
+  if (!isEmpty(provider.config.kaniko?.nodeSelector)) {
+    deployment.spec!.template.spec!.nodeSelector = provider.config.kaniko?.nodeSelector
+  }
+
+  return { deployment, service }
+}
+
+const baseUtilService: KubernetesResource<V1Service> = {
+  apiVersion: "v1",
+  kind: "Service",
+  metadata: {
+    name: utilDeploymentName,
+  },
+  spec: {
+    ports: [
+      {
+        name: "rsync",
+        protocol: "TCP",
+        port: utilRsyncPort,
+        targetPort: <any>utilRsyncPort,
+      },
+    ],
+    selector: {
+      app: utilDeploymentName,
+    },
+    type: "ClusterIP",
+  },
 }

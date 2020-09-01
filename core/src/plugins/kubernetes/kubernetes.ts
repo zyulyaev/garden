@@ -43,6 +43,7 @@ import { sternSpec } from "./logs"
 import { isString } from "lodash"
 import { mutagenCliSpec } from "./mutagen"
 import { Warning } from "../../db/entities/warning"
+import { jibContainerHandlers } from "./jib-container"
 
 export async function configureProvider({
   log,
@@ -200,7 +201,7 @@ const localKubernetesUrl = getProviderUrl("local-kubernetes")
 export const gardenPlugin = () =>
   createGardenPlugin({
     name: "kubernetes",
-    dependencies: ["container"],
+    dependencies: [{ name: "container" }, { name: "jib", optional: true }],
     docs: dedent`
     The \`kubernetes\` provider allows you to deploy [\`container\` modules](${getModuleTypeUrl("container")}) to
     Kubernetes clusters, and adds the [\`helm\`](${getModuleTypeUrl("helm")}) and
@@ -259,6 +260,11 @@ export const gardenPlugin = () =>
       {
         name: "container",
         handlers: containerHandlers,
+      },
+      // For now we need to explicitly support descendant module types
+      {
+        name: "jib-container",
+        handlers: jibContainerHandlers,
       },
     ],
     // DEPRECATED: Remove stern in v0.13

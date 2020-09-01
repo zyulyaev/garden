@@ -31,7 +31,7 @@ import { getNames, findByName, omitUndefined, exec } from "../../../src/util/uti
 import { LinkedSource } from "../../../src/config-store"
 import { ModuleVersion } from "../../../src/vcs/vcs"
 import { getModuleCacheContext } from "../../../src/types/module"
-import { createGardenPlugin } from "../../../src/types/plugin/plugin"
+import { createGardenPlugin, PluginDependency } from "../../../src/types/plugin/plugin"
 import { ConfigureProviderParams } from "../../../src/types/plugin/provider/configureProvider"
 import { ProjectConfig, defaultNamespace } from "../../../src/config/project"
 import { ModuleConfig, baseModuleSpecSchema, baseBuildSpecSchema } from "../../../src/config/module"
@@ -364,7 +364,7 @@ describe("Garden", () => {
       })
       const foo = createGardenPlugin({
         name: "foo",
-        dependencies: ["base"],
+        dependencies: [{ name: "base" }],
         extendModuleTypes: [
           {
             name: "foo",
@@ -489,7 +489,7 @@ describe("Garden", () => {
         })
         const baseB = createGardenPlugin({
           name: "base-b",
-          dependencies: ["base-a"],
+          dependencies: [{ name: "base-a" }],
           createModuleTypes: [
             {
               name: "foo-b",
@@ -505,7 +505,7 @@ describe("Garden", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base-b"],
+          dependencies: [{ name: "base-b" }],
           createModuleTypes: [
             {
               name: "foo-c",
@@ -686,11 +686,11 @@ describe("Garden", () => {
         })
         const base = createGardenPlugin({
           name: "base",
-          dependencies: ["test-plugin", "test-plugin-b"],
+          dependencies: [{ name: "test-plugin" }, { name: "test-plugin-b" }],
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["test-plugin-b", "test-plugin-c"],
+          dependencies: [{ name: "test-plugin-b" }, { name: "test-plugin-c" }],
           base: "base",
         })
 
@@ -1062,16 +1062,16 @@ describe("Garden", () => {
           })
           const baseA = createGardenPlugin({
             name: "base-a",
-            dependencies: ["test-plugin"],
+            dependencies: [{ name: "test-plugin" }],
           })
           const b = createGardenPlugin({
             name: "b",
-            dependencies: ["test-plugin", "test-plugin-b"],
+            dependencies: [{ name: "test-plugin" }, { name: "test-plugin-b" }],
             base: "base-a",
           })
           const foo = createGardenPlugin({
             name: "foo",
-            dependencies: ["test-plugin-c"],
+            dependencies: [{ name: "test-plugin-c" }],
             base: "b",
           })
 
@@ -1342,7 +1342,7 @@ describe("Garden", () => {
           const baseB = createGardenPlugin({
             name: "base-b",
             base: "base-a",
-            dependencies: ["base-a"],
+            dependencies: [{ name: "base-a" }],
             extendModuleTypes: [
               {
                 name: "foo",
@@ -1355,7 +1355,7 @@ describe("Garden", () => {
           const baseC = createGardenPlugin({
             name: "base-c",
             base: "base-b",
-            dependencies: ["base-a"],
+            dependencies: [{ name: "base-a" }],
             extendModuleTypes: [
               {
                 name: "foo",
@@ -1609,12 +1609,12 @@ describe("Garden", () => {
     it("should throw if plugins have declared circular dependencies", async () => {
       const testA = createGardenPlugin({
         name: "test-a",
-        dependencies: ["test-b"],
+        dependencies: [{ name: "test-b" }],
       })
 
       const testB = createGardenPlugin({
         name: "test-b",
-        dependencies: ["test-a"],
+        dependencies: [{ name: "test-a" }],
       })
 
       const projectConfig: ProjectConfig = {
@@ -1644,7 +1644,7 @@ describe("Garden", () => {
     it("should throw if plugins reference themselves as dependencies", async () => {
       const testA = createGardenPlugin({
         name: "test-a",
-        dependencies: ["test-a"],
+        dependencies: [{ name: "test-a" }],
       })
 
       const projectConfig: ProjectConfig = {
@@ -1747,7 +1747,7 @@ describe("Garden", () => {
 
       const testB = createGardenPlugin({
         name: "test-b",
-        dependencies: ["test-a"],
+        dependencies: [{ name: "test-a" }],
       })
 
       const projectConfig: ProjectConfig = {
@@ -1998,7 +1998,7 @@ describe("Garden", () => {
 
       const testB = createGardenPlugin({
         name: "test-b",
-        dependencies: ["base-a"],
+        dependencies: [{ name: "base-a" }],
       })
 
       const projectConfig: ProjectConfig = {
@@ -2048,7 +2048,7 @@ describe("Garden", () => {
 
       const testC = createGardenPlugin({
         name: "test-c",
-        dependencies: ["base-a"],
+        dependencies: [{ name: "base-a" }],
       })
 
       const projectConfig: ProjectConfig = {
@@ -3596,7 +3596,7 @@ describe("Garden", () => {
       })
       const foo = createGardenPlugin({
         name: "foo",
-        dependencies: ["base"],
+        dependencies: [{ name: "base" }],
         createModuleTypes: [
           {
             name: "foo",
@@ -3667,7 +3667,7 @@ describe("Garden", () => {
       })
       const foo = createGardenPlugin({
         name: "foo",
-        dependencies: ["base"],
+        dependencies: [{ name: "base" }],
         createModuleTypes: [
           {
             name: "foo",
@@ -3732,7 +3732,7 @@ describe("Garden", () => {
         })
         const baseB = createGardenPlugin({
           name: "base-b",
-          dependencies: ["base-a"],
+          dependencies: [{ name: "base-a" }],
           createModuleTypes: [
             {
               name: "base-b",
@@ -3745,7 +3745,7 @@ describe("Garden", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base-b"],
+          dependencies: [{ name: "base-b" }],
           createModuleTypes: [
             {
               name: "foo",
@@ -3816,7 +3816,7 @@ describe("Garden", () => {
         })
         const baseB = createGardenPlugin({
           name: "base-b",
-          dependencies: ["base-a"],
+          dependencies: [{ name: "base-a" }],
           createModuleTypes: [
             {
               name: "base-b",
@@ -3828,7 +3828,7 @@ describe("Garden", () => {
         })
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: ["base-b"],
+          dependencies: [{ name: "base-b" }],
           createModuleTypes: [
             {
               name: "foo",
@@ -4251,7 +4251,7 @@ describe("Garden", () => {
         // Ensure modules added by the dependency are in place before adding dependencies in dependant.
         const foo = createGardenPlugin({
           name: "foo",
-          dependencies: <string[]>[],
+          dependencies: <PluginDependency[]>[],
           createModuleTypes: [
             {
               name: "foo",
@@ -4289,7 +4289,7 @@ describe("Garden", () => {
 
         const bar = createGardenPlugin({
           name: "bar",
-          dependencies: ["foo"],
+          dependencies: [{ name: "foo" }],
           handlers: {
             augmentGraph: async () => {
               return {
@@ -4317,7 +4317,7 @@ describe("Garden", () => {
         expect(fooModule.build).to.eql({ dependencies: [{ name: "bar", copy: [] }] })
 
         // Then test wrong order and make sure it throws
-        foo.dependencies = ["bar"]
+        foo.dependencies = [{ name: "bar" }]
         bar.dependencies = []
 
         garden = await TestGarden.factory(pathFoo, {

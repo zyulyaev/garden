@@ -27,6 +27,13 @@ import { Provider, GenericProviderConfig, providerConfigBaseSchema } from "../..
 export interface ContainerProviderConfig extends GenericProviderConfig {}
 export type ContainerProvider = Provider<ContainerProviderConfig>
 
+export interface ContainerModuleOutputs {
+  "local-image-name": string
+  "local-image-id": string
+  "deployment-image-name": string
+  "deployment-image-id": string
+}
+
 export const containerModuleOutputsSchema = () =>
   joi.object().keys({
     "local-image-name": joi
@@ -257,10 +264,16 @@ export const gardenPlugin = () =>
             const deploymentImageName = containerHelpers.getDeploymentImageName(moduleConfig, undefined)
             const deploymentImageId = containerHelpers.getDeploymentImageId(moduleConfig, version, undefined)
 
+            const hasDockerfile = containerHelpers.hasDockerfile(moduleConfig, version)
+            const localImageId =
+              moduleConfig.spec.image && !hasDockerfile
+                ? moduleConfig.spec.image
+                : containerHelpers.getLocalImageId(moduleConfig, version)
+
             return {
               outputs: {
                 "local-image-name": containerHelpers.getLocalImageName(moduleConfig),
-                "local-image-id": containerHelpers.getLocalImageId(moduleConfig, version),
+                "local-image-id": localImageId,
                 "deployment-image-name": deploymentImageName,
                 "deployment-image-id": deploymentImageId,
               },

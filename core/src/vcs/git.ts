@@ -121,7 +121,9 @@ export class GitHandler extends VcsHandler {
       return []
     }
 
-    log = log.debug(`Scanning ${pathDescription} at ${path}\nIncludes: ${include}\nExcludes:${exclude}`)
+    log = log.debug(
+      `Scanning ${pathDescription} at ${path}\n→ Includes: ${include || "(none)"}\n→ Excludes: ${exclude || "(none)"}`
+    )
 
     const git = this.gitCli(log, path)
     const gitRoot = await this.getRepoRoot(log, path)
