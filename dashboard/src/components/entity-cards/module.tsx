@@ -27,6 +27,9 @@ const Wrap = styled.div`
   min-width: 17.5rem;
   flex: 1 1;
   max-width: 20rem;
+  max-height: 95vh;
+  min-height: 12rem;
+  overflow-y: scroll;
 `
 
 type CardWrapProps = {
