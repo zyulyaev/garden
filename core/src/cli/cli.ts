@@ -40,6 +40,8 @@ import { GardenProcess } from "../db/entities/garden-process"
 import { DashboardEventStream } from "../server/dashboard-event-stream"
 import { GardenPlugin } from "../types/plugin/plugin"
 import { renderError } from "../logger/renderers"
+import { findProjectConfig } from "../config/base"
+import { EnterpriseApi } from "../enterprise/api"
 
 export async function makeDummyGarden(root: string, gardenOpts: GardenOpts = {}) {
   const environments = gardenOpts.environmentName
@@ -205,6 +207,9 @@ ${renderCommands(commands)}
     const log = logger.placeholder()
     const footerLog = logger.placeholder()
 
+    // Init enterprise API
+    const enterpriseApi = new EnterpriseApi(log)
+
     // Init event & log streaming.
     const sessionId = uuidv4()
     const bufferedEventStream = new BufferedEventStream(log, sessionId)
@@ -287,6 +292,7 @@ ${renderCommands(commands)}
             targets: [
               {
                 host: enterpriseContext.enterpriseDomain,
+                enterprise: true,
                 clientAuthToken: enterpriseContext.clientAuthToken,
               },
             ],

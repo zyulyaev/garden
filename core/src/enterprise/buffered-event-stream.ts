@@ -14,6 +14,7 @@ import { got } from "../util/http"
 import { makeAuthHeader } from "./auth"
 import { LogLevel } from "../logger/log-node"
 import { Garden } from "../garden"
+import { EnterpriseApi } from "./api"
 
 export type StreamEvent = {
   name: EventName
@@ -45,6 +46,7 @@ export function formatLogEntryForEventStream(entry: LogEntry): LogEntryEvent {
 
 interface StreamTarget {
   host: string
+  enterprise: boolean
   clientAuthToken: string
 }
 
@@ -82,6 +84,7 @@ export const controlEventNames: Set<EventName> = new Set(["_workflowRunRegistere
  */
 export class BufferedEventStream {
   protected log: LogEntry
+  protected enterpriseApi: EnterpriseApi
   public sessionId: string
 
   protected targets: StreamTarget[]
@@ -107,9 +110,10 @@ export class BufferedEventStream {
    */
   private maxBatchBytes = 600 * 1024 // 600 kilobytes
 
-  constructor(log: LogEntry, sessionId: string) {
+  constructor(log: LogEntry, enterpriseApi: EnterpriseApi, sessionId: string) {
     this.sessionId = sessionId
     this.log = log
+    this.enterpriseApi = enterpriseApi
     this.log.root.events.onAny((_name: string, payload: LogEntryEvent) => {
       this.streamLogEntry(payload)
     })
@@ -247,6 +251,9 @@ export class BufferedEventStream {
 
     try {
       await Bluebird.map(this.targets, (target) => {
+        if (target.enterprise) {
+          return this.enterpriseApi.post(`/${path}`, data)
+        }
         const headers = this.getHeaders(target)
         return got.post(`${target.host}/${path}`, { json: data, headers })
       })
