@@ -9,7 +9,7 @@
 import { Command, CommandParams, CommandResult } from "./base"
 import { printHeader } from "../logger/util"
 import dedent = require("dedent")
-import { logout } from "../enterprise/auth"
+import { EnterpriseApi } from "../enterprise/api"
 
 export class LogOutCommand extends Command {
   name = "logout"
@@ -26,18 +26,22 @@ export class LogOutCommand extends Command {
   }
 
   async action({ garden, log }: CommandParams): Promise<CommandResult> {
-    if (!garden.enterpriseApi?.getDomain()) {
-      // If no domain is found or enterpriseApi is null, this is a noop
+    // Then enterprise API is not on the Garden class because this command has noProject=true
+    const enterpriseApi = await EnterpriseApi.factory(log, garden.projectRoot)
+
+    if (!enterpriseApi) {
+      log.info({ msg: `You're already logged out from Garden Enterprise.` })
       return {}
     }
-    log.debug({ msg: `Logging out of ${garden.enterpriseApi?.getDomain()}` })
-    log.info({ msg: `Logging out of Garden Enterprise.` })
+
     try {
-      await logout(garden.enterpriseApi, log)
+      await enterpriseApi.logout()
       log.info({ msg: `Succesfully logged out from Garden Enterprise.` })
     } catch (error) {
       log.error(error)
     }
+
+    await enterpriseApi.close()
 
     return {}
   }

@@ -12,21 +12,15 @@ import { EnterpriseApi } from "./api"
 
 export interface GetSecretsParams {
   log: LogEntry
-  projectId: string
   environmentName: string
   enterpriseApi: EnterpriseApi
 }
 
-export async function getSecrets({
-  log,
-  projectId,
-  environmentName,
-  enterpriseApi,
-}: GetSecretsParams): Promise<StringMap> {
+export async function getSecrets({ log, environmentName, enterpriseApi }: GetSecretsParams): Promise<StringMap> {
   let secrets: StringMap = {}
 
   try {
-    const res = await enterpriseApi.get(log, `/secrets/projectUid/${projectId}/env/${environmentName}`)
+    const res = await enterpriseApi.get(`/secrets/projectUid/${enterpriseApi.projectId}/env/${environmentName}`)
     if (res?.body?.status === "success") {
       secrets = res.body.data
     }

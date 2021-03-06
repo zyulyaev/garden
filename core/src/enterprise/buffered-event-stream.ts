@@ -260,9 +260,9 @@ export class BufferedEventStream {
 
     try {
       await Bluebird.map(this.targets, (target) => {
-        if (target.enterprise && this.enterpriseApi?.getDomain()) {
+        if (target.enterprise && this.enterpriseApi?.domain) {
           this.log.silly(`Flushing ${description} to GE /${path}`)
-          return this.enterpriseApi.post(this.log, `${path}`, { body: data })
+          return this.enterpriseApi.post(`${path}`, { body: data })
         }
         const targetUrl = `${target.host}/${path}`
         this.log.silly(`Flushing ${description} to ${targetUrl}`)
