@@ -14,6 +14,7 @@ import { ServiceStatus } from "./types/service"
 import { NamespaceStatus, RunStatus } from "./types/plugin/base"
 import { Omit } from "./util/util"
 import { AuthTokenResponse } from "./enterprise/api"
+import { RenderedActionGraph } from "./config-graph"
 import { BuildState } from "./types/plugin/module/build"
 
 export type GardenEventListener<T extends EventName> = (payload: Events[T]) => void
@@ -115,6 +116,9 @@ export interface Events extends LoggerEvents {
   }
   moduleRemoved: {}
 
+  // Stack Graph events
+  stackGraph: RenderedActionGraph
+
   // TaskGraph events
   taskPending: {
     addedAt: Date
@@ -149,7 +153,9 @@ export interface Events extends LoggerEvents {
   watchingForChanges: {}
   log: {
     timestamp: number
+    actionUid: string
     entity: {
+      moduleName: string
       type: string
       key: string
     }
@@ -257,28 +263,30 @@ export const pipedEventNames: EventName[] = [
   "configAdded",
   "configRemoved",
   "internalError",
-  "projectConfigChanged",
+  "log",
   "moduleConfigChanged",
-  "moduleSourcesChanged",
   "moduleRemoved",
-  "taskPending",
-  "taskProcessing",
+  "moduleSourcesChanged",
+  "namespaceStatus",
+  "projectConfigChanged",
+  "serviceStatus",
+  "stackGraph",
+  "taskCancelled",
   "taskComplete",
   "taskError",
-  "taskCancelled",
-  "taskGraphProcessing",
   "taskGraphComplete",
-  "watchingForChanges",
+  "taskGraphProcessing",
+  "taskPending",
+  "taskProcessing",
   "buildStatus",
   "taskStatus",
   "testStatus",
-  "serviceStatus",
-  "namespaceStatus",
-  "workflowRunning",
+  "watchingForChanges",
   "workflowComplete",
   "workflowError",
-  "workflowStepProcessing",
-  "workflowStepSkipped",
+  "workflowRunning",
   "workflowStepComplete",
   "workflowStepError",
+  "workflowStepProcessing",
+  "workflowStepSkipped",
 ]
