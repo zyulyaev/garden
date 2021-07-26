@@ -28,4 +28,4 @@ Here's a rundown of the different sections (the section links point to the first
 
 If there's something you can't find in our docs, we happily encourage you to [join our community Slack](https://chat.garden.io) and/or file an issue on [our GitHub repo](https://github.com/garden-io/garden). We're more than happy to help!
 
-![ ](https://ws.zoominfo.com/pixel/60fed74d608b570015affea6)
+<img src="https://ws.zoominfo.com/pixel/60fed74d608b570015affea6" alt="" width="1" height="1" style="display: none;" />
